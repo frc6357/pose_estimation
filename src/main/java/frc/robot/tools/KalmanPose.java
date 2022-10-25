@@ -26,13 +26,13 @@ public class KalmanPose
     /** Input Matrix */
     // ⎡ 𝜟t²/2 ⎤
     // ⎣  𝜟t   ⎦
-    private final Matrix<N2, N1> b = new Matrix<>(new SimpleMatrix(new double[][]{{0.01, 0.02}}));
+    private final Matrix<N2, N1> b = new Matrix<>(new SimpleMatrix(new double[][]{{0.01}, {0.02}}));
 
     /** Output Matrix */
     //  ⎡ 1 ⎤
     //  ⎣ 0 ⎦
     private final Matrix<N1, N2> c =
-            new Matrix<>(new SimpleMatrix(new double[][]{{1.0, 0.0}, {0.0, 1.0}}));
+            new Matrix<>(new SimpleMatrix(new double[][]{{1.0, 0.0}}));
 
     /** FeedForward Matrix */
     //  ⎡ 0 ⎤

@@ -14,19 +14,14 @@ import edu.wpi.first.wpilibj.Timer;
  */
 public class SK_ADIS16470_IMU extends ADIS16470_IMU {
 
-    private SK_ADIS16470_IMU imu = new SK_ADIS16470_IMU();
-
     /** The value of gravity */
     private double gravity = 9.81;
     /** The initial pitch calculated by the calibration data */
     private double initPitch = 0;
-    private double deltaPitch = 0;
     /** The initial roll calculated by the calibration data */
     private double initRoll = 0;
-    private double deltaRoll = 0;
     /** The initial yaw of the robot set by the calibration method */
     private double initYaw = 0;
-    private double deltaYaw = 0;
     /** The yaw that the imu is offset compared the robot front */
     private double offsetYaw = 0;
 
@@ -79,9 +74,9 @@ public class SK_ADIS16470_IMU extends ADIS16470_IMU {
 
             // Adding all the acceleration values
             // on an axis by axis basis
-            mvgAvg[i][0] = imu.getAccelX();
-            mvgAvg[i][1] = imu.getAccelY();
-            mvgAvg[i][2] = imu.getAccelZ();
+            mvgAvg[i][0] = getAccelX();
+            mvgAvg[i][1] = getAccelY();
+            mvgAvg[i][2] = getAccelZ();
 
             // Waiting 20 ms before collecting next set of data
             Timer.delay(0.02);
@@ -97,9 +92,9 @@ public class SK_ADIS16470_IMU extends ADIS16470_IMU {
      * moving average data set. Only call once per schedule run.
      */
     public void addDataPoint() {
-        mvgAvg[currentIndex][0] = imu.getAccelX();
-        mvgAvg[currentIndex][1] = imu.getAccelY();
-        mvgAvg[currentIndex][2] = imu.getAccelZ();
+        mvgAvg[currentIndex][0] = getAccelX();
+        mvgAvg[currentIndex][1] = getAccelY();
+        mvgAvg[currentIndex][2] = getAccelZ();
 
         currentIndex++;
         currentIndex = (currentIndex >= calibPoints) ? 0 : currentIndex;
@@ -115,7 +110,7 @@ public class SK_ADIS16470_IMU extends ADIS16470_IMU {
         for (int i = 0; i < calibPoints; i++) {
             sumX += mvgAvg[i][0];
             sumY += mvgAvg[i][1];
-            sumZ += mvgAvg[i][3];
+            sumZ += mvgAvg[i][2];
         }
 
         calib[0] = sumX / calibPoints;
@@ -155,19 +150,39 @@ public class SK_ADIS16470_IMU extends ADIS16470_IMU {
         return m_gyro_rate_z;
     }
 
+    /**
+     * Finds the absolute pitch of the imu after calibration
+     * @return The pitch angle in degrees
+     */
     public double getPitch()
     {
-        return initPitch + deltaPitch;
+        return getYComplementaryAngle();
     }
 
+    /**
+     * Finds the absolute roll of the imu after calibration 
+     * @return The roll angle in degrees
+     */
     public double getRoll()
     {
-        return initRoll + deltaRoll;
+        return getXComplementaryAngle();
     }
 
+    /**
+     * Find the yaw of the imu after the offset has been applied
+     * @return The yaw angle in degrees
+     */
     public double getYaw()
     {
-        return initYaw + deltaYaw;
+        return getAngle() + offsetYaw;
+    }
+
+    /**
+     * Zeroes the yaw angle by measuring the current read angle
+     */
+    public void calibrateYaw()
+    {
+        offsetYaw = -getAngle();
     }
 
 }

@@ -26,13 +26,15 @@ public class IMUSubsystem extends SubsystemBase {
 
     @Override
     public void periodic() {
+        imu.addDataPoint();
 
         alpha = imu.getYaw();
-        beta = imu.getPitch();
-        gamma = imu.getRoll();
+        beta = imu.getRoll();
+        gamma = imu.getPitch();
 
         kalmanX.predict(getGlobalXAccel());
         kalmanY.predict(getGlobalYAccel());
+        SmartDashboard.putNumber("Yaw", imu.getAngle());
 
         // This method will be called once per scheduler run
         SmartDashboard.putNumber("Complementary X", imu.getXComplementaryAngle());
@@ -41,8 +43,18 @@ public class IMUSubsystem extends SubsystemBase {
         SmartDashboard.putNumber("Filtered X Accel Angle", imu.getXFilteredAccelAngle());
         SmartDashboard.putNumber("Filtered Y Accel Angle", imu.getYFilteredAccelAngle());
 
+        SmartDashboard.putNumber("X Accel", imu.getAccelX());
+        SmartDashboard.putNumber("Y Accel", imu.getAccelY());
+
         SmartDashboard.putNumber("X Position", kalmanX.getState());
         SmartDashboard.putNumber("Y Position", kalmanY.getState());
+ 
+        SmartDashboard.putNumber("Pitch", beta);
+        SmartDashboard.putNumber("Roll", gamma);
+
+        SmartDashboard.putNumber("Global X", getGlobalXAccel());
+        SmartDashboard.putNumber("Global Y", getGlobalYAccel());
+        SmartDashboard.putNumber("Global Z", getGlobalZAccel());
     }
 
     @Override
@@ -72,5 +84,15 @@ public class IMUSubsystem extends SubsystemBase {
                 imu.getAccelZ() *
                     (Math.cos(alpha) * Math.sin(beta) + Math.sin(gamma)
                     - Math.sin(alpha) * Math.cos(gamma));
+    }
+
+    public double getGlobalZAccel()
+    {
+        return  imu.getAccelX() *
+                    (-Math.sin(beta)) +
+                imu.getAccelY() * 
+                    (Math.cos(beta) * Math.sin(gamma)) +
+                imu.getAccelZ() *
+                    (Math.cos(beta) * Math.cos(gamma));
     }
 }
