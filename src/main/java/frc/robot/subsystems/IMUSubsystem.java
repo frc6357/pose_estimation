@@ -4,7 +4,11 @@
 
 package frc.robot.subsystems;
 
+import org.ejml.simple.SimpleMatrix;
 
+import edu.wpi.first.math.Matrix;
+import edu.wpi.first.math.numbers.N1;
+import edu.wpi.first.math.numbers.N3;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.IMUWraps.SK_ADIS16470_IMU;
@@ -16,9 +20,9 @@ public class IMUSubsystem extends SubsystemBase {
     private KalmanPose kalmanX = new KalmanPose();
     private KalmanPose kalmanY = new KalmanPose();
 
-    private double alpha = 0.0;
-    private double beta = 0.0;
-    private double gamma = 0.0;
+    double alpha = 0.0;
+    double beta = 0.0;
+    double gamma = 0.0;
 
     /** Creates a new ExampleSubsystem. */
     public IMUSubsystem() {
@@ -32,8 +36,11 @@ public class IMUSubsystem extends SubsystemBase {
         beta = imu.getRoll();
         gamma = imu.getPitch();
 
-        kalmanX.predict(getGlobalXAccel());
-        kalmanY.predict(getGlobalYAccel());
+        double[] globalAccel = getGlobalAccel();
+
+        kalmanX.predict(globalAccel[0]);
+        kalmanY.predict(globalAccel[1]);
+
         SmartDashboard.putNumber("Yaw", imu.getAngle());
 
         // This method will be called once per scheduler run
@@ -48,13 +55,13 @@ public class IMUSubsystem extends SubsystemBase {
 
         SmartDashboard.putNumber("X Position", kalmanX.getState());
         SmartDashboard.putNumber("Y Position", kalmanY.getState());
- 
+
         SmartDashboard.putNumber("Pitch", beta);
         SmartDashboard.putNumber("Roll", gamma);
 
-        SmartDashboard.putNumber("Global X", getGlobalXAccel());
-        SmartDashboard.putNumber("Global Y", getGlobalYAccel());
-        SmartDashboard.putNumber("Global Z", getGlobalZAccel());
+        SmartDashboard.putNumber("Global X", globalAccel[0]);
+        SmartDashboard.putNumber("Global Y", globalAccel[1]);
+        SmartDashboard.putNumber("Global Z", globalAccel[2]);
     }
 
     @Override
@@ -62,37 +69,38 @@ public class IMUSubsystem extends SubsystemBase {
         // This method will be called once per scheduler run during simulation
     }
 
-    public double getGlobalXAccel()
-    {
-        return  imu.getAccelX() *
-                    (Math.cos(alpha) * Math.cos(beta)) +
-                imu.getAccelY() *
-                    (Math.sin(alpha) * Math.sin(beta) * Math.cos(gamma)
-                    - Math.cos(alpha) * Math.sin(gamma)) +
-                imu.getAccelZ() *
-                    (Math.cos(alpha) * Math.sin(beta) + Math.cos(gamma)
-                    + Math.sin(alpha) * Math.sin(gamma));
-    }
+    /**
+     * Calculates the global acceleration of the imu relative to the field and
+     * given yaw angle
+     * 
+     * @return An array of global acceleration with the following format:
+     *         {X Accel, Y Accel, Z Accel}
+     */
+    public double[] getGlobalAccel() {
 
-    public double getGlobalYAccel()
-    {
-        return  imu.getAccelX() *
-                    (Math.cos(alpha) * Math.sin(beta)) +
-                imu.getAccelY() *
-                    (Math.sin(alpha) * Math.sin(beta) * Math.sin(gamma)
-                    + Math.cos(alpha) * Math.cos(gamma)) +
-                imu.getAccelZ() *
-                    (Math.cos(alpha) * Math.sin(beta) + Math.sin(gamma)
-                    - Math.sin(alpha) * Math.cos(gamma));
-    }
+        Matrix<N3, N3> yawMatrix = new Matrix<>(new SimpleMatrix(new double[][]
+                { { Math.cos(alpha), -Math.sin(alpha), 0 },
+                { Math.sin(alpha), Math.cos(alpha), 0 },
+                { 0, 0, 1 } }));
 
-    public double getGlobalZAccel()
-    {
-        return  imu.getAccelX() *
-                    (-Math.sin(beta)) +
-                imu.getAccelY() * 
-                    (Math.cos(beta) * Math.sin(gamma)) +
-                imu.getAccelZ() *
-                    (Math.cos(beta) * Math.cos(gamma));
+        Matrix<N3, N3> pitchMatrix = new Matrix<>(new SimpleMatrix(new double[][]
+                { { Math.cos(beta), 0, Math.sin(beta) },
+                { 0, 1, 0 },
+                { -Math.sin(beta), 0, Math.cos(beta) } }));
+
+        Matrix<N3, N3> rollMatrix = new Matrix<>(new SimpleMatrix(new double[][]
+                { { 1, 0, 0 },
+                { 0, Math.cos(gamma), -Math.sin(gamma) },
+                { 0, Math.sin(gamma), Math.cos(gamma) } }));
+
+        Matrix<N3, N1> accelMatrix = new Matrix<>(new SimpleMatrix(new double[][]
+                { { imu.getAccelX() },
+                { imu.getAccelY() },
+                { imu.getAccelZ() } }));
+
+        Matrix<N3, N1> result = yawMatrix.times(pitchMatrix).times(rollMatrix).times(accelMatrix);
+
+        return new double[] { result.get(0, 0), result.get(0, 1), result.get(0, 2) };
+
     }
 }

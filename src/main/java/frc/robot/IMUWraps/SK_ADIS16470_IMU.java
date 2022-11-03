@@ -16,10 +16,6 @@ public class SK_ADIS16470_IMU extends ADIS16470_IMU {
 
     /** The value of gravity */
     private double gravity = 9.81;
-    /** The initial pitch calculated by the calibration data */
-    private double initPitch = 0;
-    /** The initial roll calculated by the calibration data */
-    private double initRoll = 0;
     /** The initial yaw of the robot set by the calibration method */
     private double initYaw = 0;
     /** The yaw that the imu is offset compared the robot front */
@@ -83,7 +79,6 @@ public class SK_ADIS16470_IMU extends ADIS16470_IMU {
         }
 
         averageData();
-        calculateInitAngles();
         calculateGravity();
     }
 
@@ -116,14 +111,6 @@ public class SK_ADIS16470_IMU extends ADIS16470_IMU {
         calib[0] = sumX / calibPoints;
         calib[1] = sumY / calibPoints;
         calib[2] = sumZ / calibPoints;
-    }
-
-    /**
-     * Calculate the pitch and roll of the IMU using the data from the calibration
-     */
-    private void calculateInitAngles() {
-        initPitch = -Math.atan(calib[1] / calib[2]);
-        initRoll = Math.atan(calib[0] / calib[2]);
     }
 
     /**
