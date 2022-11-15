@@ -152,7 +152,7 @@ public class SK_ADIS16470_IMU extends ADIS16470_IMU {
      */
     public double getRoll()
     {
-        return getXComplementaryAngle();
+        return -getXComplementaryAngle();
     }
 
     /**

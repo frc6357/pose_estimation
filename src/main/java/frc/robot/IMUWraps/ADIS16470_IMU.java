@@ -779,13 +779,14 @@ public class ADIS16470_IMU implements AutoCloseable, NTSendable {
           previous_timestamp = buffer[i];
 
           m_alpha = m_tau / (m_tau + m_dt);
+          // m_alpha = 1.0;
 
           if (m_first_run) {
             // Set up inclinometer calculations for first run
             accelAngleX = Math.atan2(
-                accel_x_si, Math.sqrt((accel_y_si * accel_y_si) + (accel_z_si * accel_z_si)));
+                accel_x_si, accel_z_si);
             accelAngleY = Math.atan2(
-                accel_y_si, Math.sqrt((accel_x_si * accel_x_si) + (accel_z_si * accel_z_si)));
+                accel_y_si, accel_z_si);
             compAngleX = accelAngleX;
             compAngleY = accelAngleY;
           } else {

@@ -24,6 +24,10 @@ public class IMUSubsystem extends SubsystemBase {
     double beta = 0.0;
     double gamma = 0.0;
 
+    double xAccel = 0.0;
+    double yAccel = 0.0;
+    double zAccel = 0.0;
+
     /** Creates a new ExampleSubsystem. */
     public IMUSubsystem() {
     }
@@ -32,36 +36,37 @@ public class IMUSubsystem extends SubsystemBase {
     public void periodic() {
         imu.addDataPoint();
 
-        alpha = imu.getYaw();
-        beta = imu.getRoll();
-        gamma = imu.getPitch();
+        alpha = Math.toRadians(imu.getYaw());
+        gamma = Math.toRadians(imu.getPitch());
+        beta = Math.toRadians(imu.getRoll());
 
+        xAccel = -imu.getAccelX();
+        yAccel = -imu.getAccelY();
+        zAccel = -imu.getAccelZ();
+        
         double[] globalAccel = getGlobalAccel();
-
+        
         kalmanX.predict(globalAccel[0]);
         kalmanY.predict(globalAccel[1]);
 
-        SmartDashboard.putNumber("Yaw", imu.getAngle());
-
         // This method will be called once per scheduler run
-        SmartDashboard.putNumber("Complementary X", imu.getXComplementaryAngle());
-        SmartDashboard.putNumber("Complementary Y", imu.getYComplementaryAngle());
-
-        SmartDashboard.putNumber("Filtered X Accel Angle", imu.getXFilteredAccelAngle());
-        SmartDashboard.putNumber("Filtered Y Accel Angle", imu.getYFilteredAccelAngle());
-
-        SmartDashboard.putNumber("X Accel", imu.getAccelX());
-        SmartDashboard.putNumber("Y Accel", imu.getAccelY());
-
+        
         SmartDashboard.putNumber("X Position", kalmanX.getState());
         SmartDashboard.putNumber("Y Position", kalmanY.getState());
-
-        SmartDashboard.putNumber("Pitch", beta);
-        SmartDashboard.putNumber("Roll", gamma);
 
         SmartDashboard.putNumber("Global X", globalAccel[0]);
         SmartDashboard.putNumber("Global Y", globalAccel[1]);
         SmartDashboard.putNumber("Global Z", globalAccel[2]);
+
+        SmartDashboard.putNumber("Delta Z Accel", globalAccel[2] - zAccel);
+        SmartDashboard.putNumber("Global Accel Residual", 9.81-(Math.sqrt((globalAccel[0]*globalAccel[0])+(globalAccel[1]*globalAccel[1])+(globalAccel[2]*globalAccel[2]))));
+
+        double preRotated = Math.sqrt(Math.pow(xAccel, 2) + Math.pow(yAccel, 2) + Math.pow(zAccel, 2));
+        double postRotated = Math.sqrt(Math.pow(globalAccel[0], 2) + Math.pow(globalAccel[1], 2) + Math.pow(globalAccel[2], 2));
+
+        SmartDashboard.putNumber("Pre-Rotated Magnitude", preRotated);
+        SmartDashboard.putNumber("Rotated Magnitude", postRotated);
+        SmartDashboard.putNumber("Delta Magnitude", postRotated - preRotated);
     }
 
     @Override
@@ -77,6 +82,22 @@ public class IMUSubsystem extends SubsystemBase {
      *         {X Accel, Y Accel, Z Accel}
      */
     public double[] getGlobalAccel() {
+
+        SmartDashboard.putNumber("Pitch", Math.toDegrees(beta));
+        SmartDashboard.putNumber("Roll", Math.toDegrees(gamma));
+        SmartDashboard.putNumber("Yaw", Math.toDegrees(alpha));
+
+        SmartDashboard.putNumber("X Accel", xAccel);
+        SmartDashboard.putNumber("Y Accel", yAccel);
+        SmartDashboard.putNumber("Z Accel", zAccel);
+
+        alpha = -alpha;
+        // beta = -beta;
+        // gamma = -gamma;
+
+        // alpha = Math.toRadians(70);
+        // beta = Math.toRadians(0);
+        // gamma = Math.toRadians(90);
 
         Matrix<N3, N3> yawMatrix = new Matrix<>(new SimpleMatrix(new double[][]
                 { { Math.cos(alpha), -Math.sin(alpha), 0 },
@@ -94,13 +115,25 @@ public class IMUSubsystem extends SubsystemBase {
                 { 0, Math.sin(gamma), Math.cos(gamma) } }));
 
         Matrix<N3, N1> accelMatrix = new Matrix<>(new SimpleMatrix(new double[][]
-                { { imu.getAccelX() },
-                { imu.getAccelY() },
-                { imu.getAccelZ() } }));
+                { { xAccel },
+                { yAccel },
+                { zAccel } }));
 
-        Matrix<N3, N1> result = yawMatrix.times(pitchMatrix).times(rollMatrix).times(accelMatrix);
+        Matrix<N3, N3> combined = yawMatrix.times(pitchMatrix).times(rollMatrix);
+        Matrix<N3, N3> inverse = combined.inv();
 
-        return new double[] { result.get(0, 0), result.get(0, 1), result.get(0, 2) };
+        SmartDashboard.putNumber("Det of R", combined.det());
+
+        SmartDashboard.putNumber("Single Rotated X", rollMatrix.times(accelMatrix).get(0, 0));
+        SmartDashboard.putNumber("Single Rotated Y", rollMatrix.times(accelMatrix).get(1, 0));
+
+        Matrix<N3, N1> result = combined.times(accelMatrix);
+
+        alpha = -alpha;
+        // beta = -beta;
+        // gamma = -gamma;
+
+        return new double[] { result.get(0, 0), result.get(1, 0), result.get(2, 0) };
 
     }
 }
