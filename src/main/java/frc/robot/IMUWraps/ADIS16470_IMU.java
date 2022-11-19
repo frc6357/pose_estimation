@@ -258,6 +258,11 @@ public class ADIS16470_IMU implements AutoCloseable, NTSendable {
   private SimDouble m_simAccelY;
   private SimDouble m_simAccelZ;
 
+  private int m_calibPoints = 100;
+  private double m_sumAccelX = 0;
+  private double m_sumAccelY = 0;
+  private double m_sumAccelZ = 0;
+
   private static class AcquireTask implements Runnable {
     private ADIS16470_IMU imu;
 
@@ -272,7 +277,7 @@ public class ADIS16470_IMU implements AutoCloseable, NTSendable {
   }
 
   public ADIS16470_IMU() {
-    this(IMUAxis.kZ, SPI.Port.kOnboardCS0, CalibrationTime._4s);
+    this(IMUAxis.kZ, SPI.Port.kOnboardCS0, CalibrationTime._8s);
   }
 
   /**
@@ -781,20 +786,31 @@ public class ADIS16470_IMU implements AutoCloseable, NTSendable {
           m_alpha = m_tau / (m_tau + m_dt);
           // m_alpha = 1.0;
 
-          if (m_first_run) {
+          if (m_calibPoints > 0)
+          {
+            m_sumAccelX += accel_x_si;
+            m_sumAccelY += accel_y_si;
+            m_sumAccelZ += accel_z_si;
+            m_calibPoints--;
+          }
+          else if (m_first_run) {
+            double avgAccelX = m_sumAccelX / m_calibPoints;
+            double avgAccelY = m_sumAccelY / m_calibPoints;
+            double avgAccelZ = m_sumAccelZ / m_calibPoints;
+
             // Set up inclinometer calculations for first run
             accelAngleX = Math.atan2(
-                accel_x_si, accel_z_si);
-            accelAngleY = Math.atan2(
-                accel_y_si, accel_z_si);
+                avgAccelX, avgAccelZ);
+            accelAngleY = Math.atan2( 
+                avgAccelY, avgAccelZ);
             compAngleX = accelAngleX;
             compAngleY = accelAngleY;
           } else {
             // Run inclinometer calculations
             accelAngleX = Math.atan2(
-                accel_x_si, Math.sqrt((accel_y_si * accel_y_si) + (accel_z_si * accel_z_si)));
+                accel_x_si, accel_z_si);
             accelAngleY = Math.atan2(
-                accel_y_si, Math.sqrt((accel_x_si * accel_x_si) + (accel_z_si * accel_z_si)));
+                accel_y_si, accel_z_si);
             accelAngleX = formatAccelRange(accelAngleX, accel_z_si);
             accelAngleY = formatAccelRange(accelAngleY, accel_z_si);
             compAngleX = compFilterProcess(compAngleX, accelAngleX, -gyro_rate_y_si);
@@ -803,7 +819,7 @@ public class ADIS16470_IMU implements AutoCloseable, NTSendable {
 
           synchronized (this) {
             /* Push data to global variables */
-            if (m_first_run) {
+            if (m_first_run || m_calibPoints > 0) {
               /*
                * Don't accumulate first run. previous_timestamp will be "very" old and the
                * integration will end up way off
@@ -823,7 +839,9 @@ public class ADIS16470_IMU implements AutoCloseable, NTSendable {
             m_accelAngleX = accelAngleX * rad_to_deg;
             m_accelAngleY = accelAngleY * rad_to_deg;
           }
-          m_first_run = false;
+          if (!(m_calibPoints > 0)) {
+            m_first_run = false;
+          }
         }
       } else {
         m_thread_idle = true;
