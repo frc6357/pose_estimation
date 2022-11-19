@@ -28,6 +28,8 @@ public class IMUSubsystem extends SubsystemBase {
     double yAccel = 0.0;
     double zAccel = 0.0;
 
+    long counter = 0;
+
     /** Creates a new ExampleSubsystem. */
     public IMUSubsystem() {
     }
@@ -51,8 +53,10 @@ public class IMUSubsystem extends SubsystemBase {
 
         // This method will be called once per scheduler run
         
-        SmartDashboard.putNumber("X Position", kalmanX.getState());
-        SmartDashboard.putNumber("Y Position", kalmanY.getState());
+        SmartDashboard.putNumber("X Position", kalmanX.getPosition());
+        SmartDashboard.putNumber("X Velocity", kalmanX.getVelocity());
+        SmartDashboard.putNumber("Y Position", kalmanY.getPosition());
+        SmartDashboard.putNumber("Y Velocity", kalmanY.getVelocity());
 
         SmartDashboard.putNumber("Global X", globalAccel[0]);
         SmartDashboard.putNumber("Global Y", globalAccel[1]);
@@ -67,6 +71,12 @@ public class IMUSubsystem extends SubsystemBase {
         SmartDashboard.putNumber("Pre-Rotated Magnitude", preRotated);
         SmartDashboard.putNumber("Rotated Magnitude", postRotated);
         SmartDashboard.putNumber("Delta Magnitude", postRotated - preRotated);
+
+        counter++;
+        if (counter % 50 == 0)
+        {
+            SmartDashboard.putNumber("Counter", counter);
+        }
     }
 
     @Override
@@ -120,7 +130,7 @@ public class IMUSubsystem extends SubsystemBase {
                 { zAccel } }));
 
         Matrix<N3, N3> combined = yawMatrix.times(pitchMatrix).times(rollMatrix);
-        Matrix<N3, N3> inverse = combined.inv();
+        // Matrix<N3, N3> inverse = combined.inv();
 
         SmartDashboard.putNumber("Det of R", combined.det());
 

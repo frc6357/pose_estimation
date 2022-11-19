@@ -199,7 +199,8 @@ public class KalmanFilter<States extends Num, Inputs extends Num, Outputs extend
     final var discQ = pair.getSecond();
 
     // Pₖ₊₁⁻ = APₖ⁻Aᵀ + Q
-    m_P = discA.times(m_P.times(discA.transpose())).plus(discQ);
+    // Originally was A(Pₖ⁻Aᵀ) + Q
+    m_P = discA.times(m_P).times(discA.transpose()).plus(discQ);
   }
 
   /**
