@@ -95,6 +95,18 @@ public class KalmanPose {
     }
 
     /**
+     * Must be called in the periodic function in order to properly predict the new
+     * position and velocity. Can call the periodic function instead if the
+     * measurement value is known
+     * 
+     * @param uDouble
+     */
+    public void predict(double uDouble, double dt) {
+        u.set(0, 0, uDouble);
+        skObserver.predict(u, dt);
+    }
+
+    /**
      * Called whenever a measurement value has been received. Will be used to correct
      * the current prediction value towards the measurement value.
      * @param zDouble

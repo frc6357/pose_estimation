@@ -136,40 +136,4 @@ public class SK_ADIS16470_IMU extends ADIS16470_IMU {
     public double getRateZ() {
         return m_gyro_rate_z;
     }
-
-    /**
-     * Finds the absolute pitch of the imu after calibration
-     * @return The pitch angle in degrees
-     */
-    public double getPitch()
-    {
-        return getYComplementaryAngle();
-    }
-
-    /**
-     * Finds the absolute roll of the imu after calibration 
-     * @return The roll angle in degrees
-     */
-    public double getRoll()
-    {
-        return -getXComplementaryAngle();
-    }
-
-    /**
-     * Find the yaw of the imu after the offset has been applied
-     * @return The yaw angle in degrees
-     */
-    public double getYaw()
-    {
-        return getAngle() + offsetYaw;
-    }
-
-    /**
-     * Zeroes the yaw angle by measuring the current read angle
-     */
-    public void calibrateYaw()
-    {
-        offsetYaw = -getAngle();
-    }
-
 }

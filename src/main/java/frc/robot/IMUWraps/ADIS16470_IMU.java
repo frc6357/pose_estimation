@@ -14,11 +14,16 @@ package frc.robot.IMUWraps;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
+import org.ejml.simple.SimpleMatrix;
+
 // import java.lang.FdLibm.Pow;
 import edu.wpi.first.hal.FRCNetComm.tResourceType;
 import edu.wpi.first.hal.HAL;
 import edu.wpi.first.hal.SimDevice;
 import edu.wpi.first.hal.SimDouble;
+import edu.wpi.first.math.Matrix;
+import edu.wpi.first.math.numbers.N1;
+import edu.wpi.first.math.numbers.N3;
 import edu.wpi.first.networktables.NTSendable;
 import edu.wpi.first.networktables.NTSendableBuilder;
 import edu.wpi.first.wpilibj.DigitalInput;
@@ -26,6 +31,8 @@ import edu.wpi.first.wpilibj.DigitalOutput;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.SPI;
 import edu.wpi.first.wpilibj.Timer;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+import frc.robot.tools.KalmanPose;
 
 // CHECKSTYLE.OFF: TypeName
 // CHECKSTYLE.OFF: MemberName
@@ -262,6 +269,19 @@ public class ADIS16470_IMU implements AutoCloseable, NTSendable {
   private double m_sumAccelX = 0;
   private double m_sumAccelY = 0;
   private double m_sumAccelZ = 0;
+
+  private KalmanPose kalmanX = new KalmanPose();
+  private KalmanPose kalmanY = new KalmanPose();
+
+  double alpha = 0.0;
+  double beta = 0.0;
+  double gamma = 0.0;
+
+  double xAccel = 0.0;
+  double yAccel = 0.0;
+  double zAccel = 0.0;
+
+  double offsetYaw = 0.0;
 
   private static class AcquireTask implements Runnable {
     private ADIS16470_IMU imu;
@@ -707,12 +727,7 @@ public class ADIS16470_IMU implements AutoCloseable, NTSendable {
     double accelAngleX = 0.0;
     double accelAngleY = 0.0;
 
-    while (true) {
-      // Sleep loop for 10ms
-      try {
-        Thread.sleep(10);
-      } catch (InterruptedException e) {
-      }
+ 
 
       if (m_thread_active) {
         m_thread_idle = false;
@@ -735,6 +750,19 @@ public class ADIS16470_IMU implements AutoCloseable, NTSendable {
         for (int i = 0; i < data_to_read; i += dataset_len) {
           // Timestamp is at buffer[i]
           m_dt = ((double) buffer[i] - previous_timestamp) / 1000000.0;
+
+          alpha = Math.toRadians(getYaw());
+          gamma = Math.toRadians(getPitch());
+          beta = Math.toRadians(getRoll());
+
+          xAccel = -getAccelX();
+          yAccel = -getAccelY();
+          zAccel = -getAccelZ();
+          
+          double[] globalAccel = getGlobalAccel();
+          
+          kalmanX.predict(globalAccel[0], m_dt);
+          kalmanY.predict(globalAccel[1], m_dt);
 
           /*
            * System.out.println(((toInt(buffer[i + 3], buffer[i + 4], buffer[i + 5],
@@ -786,14 +814,12 @@ public class ADIS16470_IMU implements AutoCloseable, NTSendable {
           // m_alpha = m_tau / (m_tau + m_dt);
           m_alpha = 1.0;
 
-          if (m_calibPoints > 0)
-          {
+          if (m_calibPoints > 0) {
             m_sumAccelX += accel_x_si;
             m_sumAccelY += accel_y_si;
             m_sumAccelZ += accel_z_si;
             m_calibPoints--;
-          }
-          else if (m_first_run) {
+          } else if (m_first_run) {
             double avgAccelX = m_sumAccelX / m_calibPoints;
             double avgAccelY = m_sumAccelY / m_calibPoints;
             double avgAccelZ = m_sumAccelZ / m_calibPoints;
@@ -801,7 +827,7 @@ public class ADIS16470_IMU implements AutoCloseable, NTSendable {
             // Set up inclinometer calculations for first run
             accelAngleX = Math.atan2(
                 avgAccelX, avgAccelZ);
-            accelAngleY = Math.atan2( 
+            accelAngleY = Math.atan2(
                 avgAccelY, avgAccelZ);
             compAngleX = accelAngleX;
             compAngleY = accelAngleY;
@@ -868,7 +894,6 @@ public class ADIS16470_IMU implements AutoCloseable, NTSendable {
         accelAngleY = 0.0;
       }
     }
-  }
 
   /**
    * @param compAngle
@@ -1025,5 +1050,103 @@ public class ADIS16470_IMU implements AutoCloseable, NTSendable {
   public void initSendable(NTSendableBuilder builder) {
     builder.setSmartDashboardType("Gyro");
     builder.addDoubleProperty("Value", this::getAngle, null);
+  }
+
+  /**
+     * Finds the absolute pitch of the imu after calibration
+     * @return The pitch angle in degrees
+     */
+    public double getPitch()
+    {
+        return getYComplementaryAngle();
+    }
+
+    /**
+     * Finds the absolute roll of the imu after calibration 
+     * @return The roll angle in degrees
+     */
+    public double getRoll()
+    {
+        return -getXComplementaryAngle();
+    }
+
+    /**
+     * Find the yaw of the imu after the offset has been applied
+     * @return The yaw angle in degrees
+     */
+    public double getYaw()
+    {
+        return getAngle() + offsetYaw;
+    }
+
+    /**
+     * Zeroes the yaw angle by measuring the current read angle
+     */
+    public void calibrateYaw()
+    {
+        offsetYaw = -getAngle();
+    }
+
+    /**
+     * Calculates the global acceleration of the imu relative to the field and
+     * given yaw angle
+     * 
+     * @return An array of global acceleration with the following format:
+     *         {X Accel, Y Accel, Z Accel}
+     */
+    public double[] getGlobalAccel() {
+
+      SmartDashboard.putNumber("Pitch", Math.toDegrees(beta));
+      SmartDashboard.putNumber("Roll", Math.toDegrees(gamma));
+      SmartDashboard.putNumber("Yaw", Math.toDegrees(alpha));
+
+      SmartDashboard.putNumber("X Accel", xAccel);
+      SmartDashboard.putNumber("Y Accel", yAccel);
+      SmartDashboard.putNumber("Z Accel", zAccel);
+
+      alpha = -alpha;
+      // beta = -beta;
+      // gamma = -gamma;
+
+      // alpha = Math.toRadians(70);
+      // beta = Math.toRadians(0);
+      // gamma = Math.toRadians(90);
+
+      Matrix<N3, N3> yawMatrix = new Matrix<>(new SimpleMatrix(new double[][]
+              { { Math.cos(alpha), -Math.sin(alpha), 0 },
+              { Math.sin(alpha), Math.cos(alpha), 0 },
+              { 0, 0, 1 } }));
+
+      Matrix<N3, N3> pitchMatrix = new Matrix<>(new SimpleMatrix(new double[][]
+              { { Math.cos(beta), 0, Math.sin(beta) },
+              { 0, 1, 0 },
+              { -Math.sin(beta), 0, Math.cos(beta) } }));
+
+      Matrix<N3, N3> rollMatrix = new Matrix<>(new SimpleMatrix(new double[][]
+              { { 1, 0, 0 },
+              { 0, Math.cos(gamma), -Math.sin(gamma) },
+              { 0, Math.sin(gamma), Math.cos(gamma) } }));
+
+      Matrix<N3, N1> accelMatrix = new Matrix<>(new SimpleMatrix(new double[][]
+              { { xAccel },
+              { yAccel },
+              { zAccel } }));
+
+      Matrix<N3, N3> combined = yawMatrix.times(pitchMatrix).times(rollMatrix);
+      // Matrix<N3, N3> inverse = combined.inv();
+
+      SmartDashboard.putNumber("Det of R", combined.det());
+
+      SmartDashboard.putNumber("Single Rotated X", rollMatrix.times(accelMatrix).get(0, 0));
+      SmartDashboard.putNumber("Single Rotated Y", rollMatrix.times(accelMatrix).get(1, 0));
+
+      Matrix<N3, N1> result = combined.times(accelMatrix);
+
+      alpha = -alpha;
+      // beta = -beta;
+      // gamma = -gamma;
+
+      return new double[] { result.get(0, 0), result.get(1, 0), result.get(2, 0) };
+
   }
 }
