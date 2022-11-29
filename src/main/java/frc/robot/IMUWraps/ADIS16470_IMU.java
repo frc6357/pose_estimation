@@ -783,8 +783,8 @@ public class ADIS16470_IMU implements AutoCloseable, NTSendable {
           // Store timestamp for next iteration
           previous_timestamp = buffer[i];
 
-          m_alpha = m_tau / (m_tau + m_dt);
-          // m_alpha = 1.0;
+          // m_alpha = m_tau / (m_tau + m_dt);
+          m_alpha = 1.0;
 
           if (m_calibPoints > 0)
           {
