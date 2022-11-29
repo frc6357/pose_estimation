@@ -273,15 +273,15 @@ public class ADIS16470_IMU implements AutoCloseable, NTSendable {
   private KalmanPose kalmanX = new KalmanPose();
   private KalmanPose kalmanY = new KalmanPose();
 
-  double alpha = 0.0;
-  double beta = 0.0;
-  double gamma = 0.0;
+  protected double alpha = 0.0;
+  protected double beta = 0.0;
+  protected double gamma = 0.0;
 
-  double xAccel = 0.0;
-  double yAccel = 0.0;
-  double zAccel = 0.0;
+  protected double xAccel = 0.0;
+  protected double yAccel = 0.0;
+  protected double zAccel = 0.0;
 
-  double offsetYaw = 0.0;
+  protected double offsetYaw = 0.0;
 
   private static class AcquireTask implements Runnable {
     private ADIS16470_IMU imu;
@@ -1149,4 +1149,41 @@ public class ADIS16470_IMU implements AutoCloseable, NTSendable {
       return new double[] { result.get(0, 0), result.get(1, 0), result.get(2, 0) };
 
   }
+
+  /**
+   * Returns the position of the robot in the x axis as calculated by the Kalman Filter
+   * @return
+   */
+  public double getPositionX()
+  {
+    return kalmanX.getPosition();
+  }
+
+  /**
+   * Returns the velocity of the robot in the x axis as calculated by the Kalman Filter
+   * @return
+   */
+  public double getVelocityX()
+  {
+    return kalmanX.getVelocity();
+  }
+
+  /**
+   * Returns the position of the robot in the y axis as calculated by the Kalman Filter
+   * @return
+   */
+  public double getPositionY()
+  {
+    return kalmanX.getPosition();
+  }
+
+  /**
+   * Returns the velocity of the robot in the y axis as calculated by the Kalman Filter
+   * @return
+   */
+  public double getVelocityY()
+  {
+    return kalmanX.getVelocity();
+  }
+
 }

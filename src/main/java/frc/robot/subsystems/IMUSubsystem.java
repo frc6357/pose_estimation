@@ -4,13 +4,16 @@
 
 package frc.robot.subsystems;
 
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.IMUWraps.SK_ADIS16470_IMU;
 
 public class IMUSubsystem extends SubsystemBase {
     private SK_ADIS16470_IMU imu = new SK_ADIS16470_IMU();
 
-    long counter = 0;
+    private long counter = 0;
+
+    private double[] globalAccel;
 
     @Override
     public void periodic() {
@@ -18,14 +21,16 @@ public class IMUSubsystem extends SubsystemBase {
 
         // This method will be called once per scheduler run
         
-        // SmartDashboard.putNumber("X Position", kalmanX.getPosition());
-        // SmartDashboard.putNumber("X Velocity", kalmanX.getVelocity());
-        // SmartDashboard.putNumber("Y Position", kalmanY.getPosition());
-        // SmartDashboard.putNumber("Y Velocity", kalmanY.getVelocity());
+        SmartDashboard.putNumber("X Position", imu.getPositionX());
+        SmartDashboard.putNumber("X Velocity", imu.getVelocityX());
+        SmartDashboard.putNumber("Y Position", imu.getPositionY());
+        SmartDashboard.putNumber("Y Velocity", imu.getVelocityY());
 
-        // SmartDashboard.putNumber("Global X", globalAccel[0]);
-        // SmartDashboard.putNumber("Global Y", globalAccel[1]);
-        // SmartDashboard.putNumber("Global Z", globalAccel[2]);
+        globalAccel = imu.getGlobalAccel();
+
+        SmartDashboard.putNumber("Global X", globalAccel[0]);
+        SmartDashboard.putNumber("Global Y", globalAccel[1]);
+        SmartDashboard.putNumber("Global Z", globalAccel[2]);
 
         // SmartDashboard.putNumber("Delta Z Accel", globalAccel[2] - zAccel);
         // SmartDashboard.putNumber("Global Accel Residual", 9.81-(Math.sqrt((globalAccel[0]*globalAccel[0])+(globalAccel[1]*globalAccel[1])+(globalAccel[2]*globalAccel[2]))));
@@ -37,11 +42,11 @@ public class IMUSubsystem extends SubsystemBase {
         // SmartDashboard.putNumber("Rotated Magnitude", postRotated);
         // SmartDashboard.putNumber("Delta Magnitude", postRotated - preRotated);
 
-        // counter++;
-        // if (counter % 50 == 0)
-        // {
-        //     SmartDashboard.putNumber("Counter", counter);
-        // }
+        counter++;
+        if (counter % 50 == 0)
+        {
+            SmartDashboard.putNumber("Counter", counter);
+        }
     }
 
     @Override

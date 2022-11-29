@@ -100,6 +100,7 @@ public class KalmanPose {
      * measurement value is known
      * 
      * @param uDouble
+     * @param dt
      */
     public void predict(double uDouble, double dt) {
         u.set(0, 0, uDouble);
@@ -114,6 +115,17 @@ public class KalmanPose {
     public void correct(double zDouble) {
         z.set(0, 0, zDouble);
         skObserver.correct(u, z, 0.020);
+    }
+
+    /**
+     * Called whenever a measurement value has been received. Will be used to correct
+     * the current prediction value towards the measurement value.
+     * @param zDouble
+     * @param dt
+     */
+    public void correct(double zDouble, double dt) {
+        z.set(0, 0, zDouble);
+        skObserver.correct(u, z, dt);
     }
 
     /**
