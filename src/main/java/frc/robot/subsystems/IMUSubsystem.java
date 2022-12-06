@@ -4,6 +4,7 @@
 
 package frc.robot.subsystems;
 
+import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.IMUWraps.SK_ADIS16470_IMU;
@@ -15,9 +16,23 @@ public class IMUSubsystem extends SubsystemBase {
 
     private double[] globalAccel;
 
+    private boolean isEnabled = false;
+
     @Override
     public void periodic() {
         imu.addDataPoint();
+
+        // This is for quick resets and is to be used for testing only
+        // TODO: Remove this once tested
+        // Reset the Kalman Filter Position and Velocity if the robot becomes enabled
+        boolean stateChanged = isEnabled != DriverStation.isEnabled();
+        isEnabled = stateChanged ? DriverStation.isEnabled() : isEnabled;
+        if (stateChanged && isEnabled == true)
+        {
+            imu.resetKalmanFilter();
+        }
+
+
 
         // This method will be called once per scheduler run
         

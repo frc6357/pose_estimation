@@ -1186,4 +1186,12 @@ public class ADIS16470_IMU implements AutoCloseable, NTSendable {
     return kalmanX.getVelocity();
   }
 
+  public void resetKalmanFilter()
+  {
+    kalmanX.setPosition(0);
+    kalmanX.setInitialVel(0);
+    kalmanY.setPosition(0);
+    kalmanY.setInitialVel(0);
+  }
+
 }
